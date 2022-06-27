@@ -1,13 +1,25 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.4;
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IPoolFactory} from "./PoolFactory.sol";
+
+interface IReferral {
+    function addReferral(
+        address,
+        address,
+        uint256
+    ) external returns (bool);
+}
 
 contract Referral is Ownable, ReentrancyGuard {
     uint8 private constant MAX_LEVEL = 3;
     uint256[(MAX_LEVEL)] private persentagePerLevel;
 
+    IPoolFactory public poolFactory;
     IERC20 public token;
     address public tokenPayer;
 
@@ -36,6 +48,10 @@ contract Referral is Ownable, ReentrancyGuard {
         }
     }
 
+    function setPoolFactory(address _poolFactory) external onlyOwner {
+        poolFactory = IPoolFactory(_poolFactory);
+    }
+
     function setToken(address _token) external onlyOwner {
         token = IERC20(_token);
     }
@@ -56,15 +72,12 @@ contract Referral is Ownable, ReentrancyGuard {
         return accounts[_address];
     }
 
-    // function diposit(uint256 _amount, address referee) public {
-    //     addReferral(_msgSender(), referee, _amount);
-    // }
-
     function addReferral(
         address _referrer,
         address _referee,
         uint256 _amount
     ) external returns (bool) {
+        require(indexOf(_msgSender()), "Only Pools can add Referrals");
         Account storage userAccount = accounts[_referrer];
         if (_referee == userAccount.referee) {
             emit RegisteredRefererFailed(
@@ -89,6 +102,16 @@ contract Referral is Ownable, ReentrancyGuard {
             return false;
         }
         return true;
+    }
+
+    function indexOf(address _address) internal view returns (bool) {
+        address[] memory addresses = poolFactory.getPoolInfo();
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (addresses[i] == _address) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function isCircularReference(address _referee, address _referrer)

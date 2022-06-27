@@ -1,9 +1,13 @@
 //SPDX-License-Identifier: Unlicense
+
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {PoolFactory} from "./PoolFactory.sol";
+import {Referral, IReferral} from "./Referral.sol";
 
 interface IOracle {
     function getRate(
@@ -21,14 +25,15 @@ contract MokeToken is ERC20 {
 
 contract Pool is Ownable, ReentrancyGuard {
     string public poolName;
-    uint256 public poolTokenPrice;
+    uint256 private poolTokenPrice;
     uint256 public poolStartTime;
     uint256 public poolEndTime;
     uint256 public releaseSteps;
     uint256 public totalRewardPercentage;
     bool public isListed = false;
-    ERC20 public stakingToken;
-    address public payer;
+    IERC20 public token;
+    address public tokenPayer;
+    IReferral public referralManager;
 
     bool public status;
 
@@ -64,24 +69,27 @@ contract Pool is Ownable, ReentrancyGuard {
     );
     event Claim(address staker, uint256 reward, uint256 timeStamp);
 
-    constructor(address _payer, address _stakingToken)
-        // string memory _poolName,
-        // uint256 _poolTokenPrice,
-        // uint256 _mROI,
-        // uint256 _releaseSteps
-        Ownable()
-        ReentrancyGuard()
-    {
-        stakingToken = ERC20(_stakingToken);
-        poolName = "_poolName";
-        poolTokenPrice = 1000000000000000000; //_poolTokenPrice;
+    constructor(
+        string memory _poolName,
+        uint256 _poolTokenPrice,
+        uint8 _mROI,
+        uint8 _releaseSteps,
+        IERC20 _token,
+        address _tokenPayer,
+        address _referralManager,
+        address _owner
+    ) Ownable() ReentrancyGuard() {
+        token = IERC20(_token);
+        poolName = _poolName;
+        poolTokenPrice = _poolTokenPrice;
+        releaseSteps = _releaseSteps;
+        totalRewardPercentage = _mROI * _releaseSteps;
+        tokenPayer = _tokenPayer;
+        referralManager = IReferral(_referralManager);
         poolStartTime = block.timestamp;
-        poolEndTime = 12 * 5 seconds;
-        // poolEndTime = 6 * 30 days;
-        releaseSteps = 12;
-        totalRewardPercentage = 50;
-        payer = _payer;
+        poolEndTime = block.timestamp + _releaseSteps * 30 days;
         status = true;
+        transferOwnership(_owner);
     }
 
     modifier isActive() {
@@ -95,6 +103,10 @@ contract Pool is Ownable, ReentrancyGuard {
 
     function setStatus(bool _status) external onlyOwner {
         status = _status;
+    }
+
+    function setReferralManager(address _referralManager) external onlyOwner {
+        referralManager = IReferral(_referralManager);
     }
 
     function setEndTime(uint256 _time) external onlyOwner {
@@ -119,16 +131,15 @@ contract Pool is Ownable, ReentrancyGuard {
         payable(_msgSender()).transfer(balance);
     }
 
-    function stake(uint256 _amount, address _address)
-        public
-        isActive
-        nonReentrant
-        onlyOwner
-        returns (bool)
-    {
+    function stake(
+        uint256 _amount,
+        address _address,
+        address _referrer
+    ) public isActive nonReentrant onlyOwner returns (bool) {
         require(_amount > 0, "Amount must be greater than 0");
         uint256 totalToken = (_amount * 1e18) / getTokenPrice();
-        stakingToken.transferFrom(payer, address(this), totalToken);
+        token.transferFrom(tokenPayer, address(this), totalToken);
+        referralManager.addReferral(_address, _referrer, _amount);
         StakingInfo storage stakeInfo = stakings[_address];
 
         if (_isStake(_address)) {
@@ -165,7 +176,7 @@ contract Pool is Ownable, ReentrancyGuard {
         if (isListed) {
             uint256 rate = IOracle(0x7F069df72b7A39bCE9806e3AfaF579E54D8CF2b9)
                 .getRate(
-                    stakingToken,
+                    token,
                     IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063),
                     true
                 );
@@ -189,10 +200,10 @@ contract Pool is Ownable, ReentrancyGuard {
 
     function _transfer(address _to, uint256 _value) internal {
         require(
-            stakingToken.balanceOf(payer) >= _value,
+            token.balanceOf(tokenPayer) >= _value,
             "Not enough tokens to transfer"
         );
-        stakingToken.transferFrom(payer, _to, _value);
+        token.transferFrom(tokenPayer, _to, _value);
     }
 
     function _getClaimableRewards(address _staker)

@@ -1,18 +1,31 @@
 //SPDX-License-Identifier: Unlicense
+
 pragma solidity ^0.8.0;
-import "./Pool.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+import {Pool} from "./Pool.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+interface IPoolFactory {
+    function getPoolInfo() external view returns (address[] memory);
+}
 
 contract PoolFactory is Ownable {
     address[] private pools;
     IERC20 public token;
     address public tokenPayer;
 
-    constructor(IERC20 _token, address _tokenPayer) Ownable() {
+    address public referralManager;
+
+    constructor(
+        IERC20 _token,
+        address _tokenPayer,
+        address _referralManager
+    ) Ownable() {
         token = _token;
         tokenPayer = _tokenPayer;
+        referralManager = _referralManager;
     }
 
     function setToken(address _token) external onlyOwner {
@@ -23,16 +36,41 @@ contract PoolFactory is Ownable {
         tokenPayer = _tokenPayer;
     }
 
-    function getPoolInfo() public view returns (uint256, address[] memory) {
-        return (pools.length, pools);
+    function setReferralManager(address _referralManager) external onlyOwner {
+        referralManager = _referralManager;
     }
 
-    function createPool(string memory _poolName) public {
-        // Pool newPool = new Pool();
-        // // _poolName,
-        // // 500000000000000000,
-        // // block.timestamp,
-        // // block.timestamp + 30 minutes
-        // pools.push(address(newPool));
+    function getPoolInfo() external view returns (address[] memory) {
+        return pools;
+    }
+
+    function createPool(
+        string memory _poolName,
+        uint256 _poolTokenPrice,
+        uint8 _mROI,
+        uint8 _releaseSteps
+    ) external onlyOwner returns (bool) {
+        Pool newPool = new Pool(
+            _poolName,
+            _poolTokenPrice,
+            _mROI,
+            _releaseSteps,
+            token,
+            tokenPayer,
+            referralManager,
+            owner()
+        );
+        pools.push(address(newPool));
+        return true;
+    }
+
+    function removePool(address _pool) external onlyOwner returns (bool) {
+        for (uint256 i = 0; i < pools.length; i++) {
+            if (pools[i] == _pool) {
+                pools[i] = pools[pools.length - 1];
+            }
+        }
+        pools.pop();
+        return true;
     }
 }
