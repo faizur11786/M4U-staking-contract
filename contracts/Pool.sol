@@ -207,7 +207,7 @@ contract Pool is Ownable, ReentrancyGuard {
     }
 
     function _getClaimableRewards(address _staker)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -220,7 +220,7 @@ contract Pool is Ownable, ReentrancyGuard {
         return stakings[_staker].isStaked;
     }
 
-    function _stakingTimer(address _staker) public view returns (uint256) {
+    function _stakingTimer(address _staker) internal view returns (uint256) {
         if (!stakings[_staker].isStaked) {
             return 0;
         } else if (block.timestamp <= stakings[_staker].endTime) {
@@ -237,10 +237,10 @@ contract Pool is Ownable, ReentrancyGuard {
     function claim() public nonReentrant returns (bool) {
         require(_isStake(_msgSender()), "Staking address is not staking");
         require(stakings[_msgSender()].isStaked, "Already unstaked");
-        require(
-            block.timestamp >= stakings[_msgSender()].nextRewardAt,
-            "Reward not ready for claiming"
-        );
+        // require(
+        //     block.timestamp >= stakings[_msgSender()].nextRewardAt,
+        //     "Reward not ready for claiming"
+        // );
         if (block.timestamp <= stakings[_msgSender()].endTime) {
             uint256 totalToken = claimableToken(_msgSender()) +
                 stakings[_msgSender()].lastClaimableToken;

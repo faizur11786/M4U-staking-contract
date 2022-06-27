@@ -18,6 +18,9 @@ contract PoolFactory is Ownable {
 
     address public referralManager;
 
+    event PoolCreated(address pool, uint8 mROI, uint8 releaseSteps);
+    event PoolRemoved(address pool);
+
     constructor(
         IERC20 _token,
         address _tokenPayer,
@@ -61,6 +64,7 @@ contract PoolFactory is Ownable {
             owner()
         );
         pools.push(address(newPool));
+        emit PoolCreated(address(newPool), _mROI, _releaseSteps);
         return true;
     }
 
@@ -71,6 +75,7 @@ contract PoolFactory is Ownable {
             }
         }
         pools.pop();
+        emit PoolRemoved(_pool);
         return true;
     }
 }

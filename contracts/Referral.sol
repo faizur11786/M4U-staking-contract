@@ -31,10 +31,16 @@ contract Referral is Ownable, ReentrancyGuard {
     }
 
     event RegisteredRefererFailed(
-        address referrer,
-        address referee,
+        address indexed referrer,
+        address indexed referee,
         string reason
     );
+    event RegisteredReferer(
+        address indexed referrer,
+        address indexed referee,
+        uint256 amount
+    );
+    event ClaimedBonus(address referee, uint256 amount, uint256 referredCount);
 
     constructor(
         uint256[] memory _persentagePerLevel,
@@ -138,16 +144,27 @@ contract Referral is Ownable, ReentrancyGuard {
                 parents.claimableBonus +=
                     (((persentagePerLevel[i] * 1e18) / 100) * _amount) /
                     1e18;
+                emit RegisteredReferer(
+                    _address,
+                    account.referee,
+                    (((persentagePerLevel[i] * 1e18) / 100) * _amount) / 1e18
+                );
             }
             account = parents;
         }
     }
 
-    function claimBonus(address _address) external nonReentrant returns (bool) {
-        Account storage account = accounts[_address];
+    function claimBonus() external nonReentrant returns (bool) {
+        Account storage account = accounts[_msgSender()];
         require(account.claimableBonus > 0, "No bonus to claim");
-        token.transferFrom(tokenPayer, _address, account.claimableBonus);
+        token.transferFrom(tokenPayer, _msgSender(), account.claimableBonus);
         account.claimableBonus = 0;
+
+        emit ClaimedBonus(
+            _msgSender(),
+            account.claimableBonus,
+            account.referredCount
+        );
         return true;
     }
 
