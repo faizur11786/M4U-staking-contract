@@ -27,7 +27,7 @@ contract Pool is Ownable, ReentrancyGuard {
     string public poolName;
     uint256 private poolTokenPrice;
     uint256 public poolStartTime;
-    uint256 public poolEndTime;
+    uint256 public poolLockedTime;
     uint256 public releaseSteps;
     uint256 public totalRewardPercentage;
     bool public isListed = false;
@@ -38,7 +38,7 @@ contract Pool is Ownable, ReentrancyGuard {
     bool public status;
 
     uint256 public totalStaked;
-
+    // 2680000000000000000
     // structyou for holding staking information
     struct StakingInfo {
         uint256 amount;
@@ -81,13 +81,13 @@ contract Pool is Ownable, ReentrancyGuard {
     ) Ownable() ReentrancyGuard() {
         token = IERC20(_token);
         poolName = _poolName;
-        poolTokenPrice = _poolTokenPrice;
+        poolTokenPrice = _poolTokenPrice; //_poolTokenPrice;
         releaseSteps = _releaseSteps;
         totalRewardPercentage = _mROI * _releaseSteps;
         tokenPayer = _tokenPayer;
         referralManager = IReferral(_referralManager);
         poolStartTime = block.timestamp;
-        poolEndTime = block.timestamp + _releaseSteps * 30 days;
+        poolLockedTime = _releaseSteps * 5 seconds;
         status = true;
         transferOwnership(_owner);
     }
@@ -110,7 +110,7 @@ contract Pool is Ownable, ReentrancyGuard {
     }
 
     function setEndTime(uint256 _time) external onlyOwner {
-        poolEndTime = block.timestamp + _time;
+        poolLockedTime = block.timestamp + _time;
     }
 
     function setPrice(uint256 _price) external onlyOwner {
@@ -151,7 +151,7 @@ contract Pool is Ownable, ReentrancyGuard {
             stakeInfo.lastClaimableToken = 0;
         }
         stakeInfo.rewardingAt = block.timestamp;
-        stakeInfo.endTime = block.timestamp + poolEndTime;
+        stakeInfo.endTime = block.timestamp + poolLockedTime;
         stakeInfo.nextRewardAt = _nextRewardAt();
         stakeInfo.isStaked = true;
         stakeInfo.index++;
@@ -191,11 +191,11 @@ contract Pool is Ownable, ReentrancyGuard {
     ///////////////////////////////////////////
 
     function _percentePerSec() internal view returns (uint256) {
-        return (totalRewardPercentage * 1e18) / poolEndTime;
+        return (totalRewardPercentage * 1e18) / poolLockedTime;
     }
 
     function _nextRewardAt() internal view returns (uint256) {
-        return block.timestamp + (poolEndTime / releaseSteps);
+        return block.timestamp + (poolLockedTime / releaseSteps);
     }
 
     function _transfer(address _to, uint256 _value) internal {
@@ -220,13 +220,11 @@ contract Pool is Ownable, ReentrancyGuard {
         return stakings[_staker].isStaked;
     }
 
-    function _stakingTimer(address _staker) internal view returns (uint256) {
+    function _stakingTimer(address _staker) public view returns (uint256) {
         if (!stakings[_staker].isStaked) {
             return 0;
-        } else if (block.timestamp <= stakings[_staker].endTime) {
-            return block.timestamp - stakings[_staker].rewardingAt;
         } else {
-            return stakings[_staker].endTime - stakings[_staker].rewardingAt;
+            return block.timestamp - stakings[_staker].rewardingAt;
         }
     }
 
@@ -235,43 +233,53 @@ contract Pool is Ownable, ReentrancyGuard {
     ///////////////////////////////////////////
 
     function claim() public nonReentrant returns (bool) {
+        require(_isStake(_msgSender()), "You are not staked");
+        require(stakings[_msgSender()].isStaked, "Already unstaked");
+        require(
+            block.timestamp >= stakings[_msgSender()].nextRewardAt,
+            "Reward not ready for claiming"
+        );
+        uint256 totalToken = claimableToken(_msgSender()) +
+            stakings[_msgSender()].lastClaimableToken;
+        _transfer(_msgSender(), totalToken);
+        stakings[_msgSender()].rewardingAt = block.timestamp;
+        stakings[_msgSender()].totalRewardClaimed += totalToken;
+        stakings[_msgSender()].lastClaimableToken = 0;
+        stakings[_msgSender()].nextRewardAt = _nextRewardAt();
+
+        emit Claim(_msgSender(), totalToken, block.timestamp);
+        return true;
+    }
+
+    function unStake() public nonReentrant returns (bool) {
         require(_isStake(_msgSender()), "Staking address is not staking");
         require(stakings[_msgSender()].isStaked, "Already unstaked");
-        // require(
-        //     block.timestamp >= stakings[_msgSender()].nextRewardAt,
-        //     "Reward not ready for claiming"
-        // );
-        if (block.timestamp <= stakings[_msgSender()].endTime) {
-            uint256 totalToken = claimableToken(_msgSender()) +
-                stakings[_msgSender()].lastClaimableToken;
-            _transfer(_msgSender(), totalToken);
-            stakings[_msgSender()].rewardingAt = block.timestamp;
-            stakings[_msgSender()].totalRewardClaimed += totalToken;
-            stakings[_msgSender()].lastClaimableToken = 0;
-            stakings[_msgSender()].nextRewardAt = _nextRewardAt();
+        require(
+            stakings[_msgSender()].endTime < block.timestamp,
+            "Your funds are not yet unlocked"
+        );
+        uint256 totalToken = ((((stakings[_msgSender()].amount * 1e18) /
+            getTokenPrice()) * 1e18) / 1e18) +
+            claimableToken(_msgSender()) +
+            stakings[_msgSender()].lastClaimableToken;
+        totalStaked -= ((((stakings[_msgSender()].amount * 1e18) /
+            getTokenPrice()) * 1e18) / 1e18);
+        _transfer(_msgSender(), totalToken);
+        stakings[_msgSender()].totalRewardClaimed += totalToken;
+        stakings[_msgSender()].lastClaimableToken = 0;
+        stakings[_msgSender()].isStaked = false;
 
-            emit Claim(_msgSender(), totalToken, block.timestamp);
-            return true;
-        } else {
-            uint256 totalToken = ((((stakings[_msgSender()].amount * 1e18) /
-                getTokenPrice()) * 1e18) / 1e18) +
-                claimableToken(_msgSender()) +
-                stakings[_msgSender()].lastClaimableToken;
-            totalStaked -= ((((stakings[_msgSender()].amount * 1e18) /
-                getTokenPrice()) * 1e18) / 1e18);
-            _transfer(_msgSender(), totalToken);
-            stakings[_msgSender()].totalRewardClaimed += totalToken;
-            stakings[_msgSender()].lastClaimableToken = 0;
-            stakings[_msgSender()].isStaked = false;
+        emit UnStake(
+            _msgSender(),
+            totalToken,
+            ((totalToken * 1e18) / (getTokenPrice() * 1e18) / 1e18),
+            block.timestamp
+        );
+        return true;
+    }
 
-            emit UnStake(
-                _msgSender(),
-                totalToken,
-                ((totalToken * 1e18) / (getTokenPrice() * 1e18) / 1e18),
-                block.timestamp
-            );
-            return true;
-        }
+    function isLocked(address _address) public view returns (bool) {
+        return block.timestamp < stakings[_address].endTime;
     }
 
     function claimableToken(address _staker) public view returns (uint256) {
