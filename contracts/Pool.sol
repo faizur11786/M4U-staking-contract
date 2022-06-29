@@ -7,18 +7,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {PoolFactory} from "./PoolFactory.sol";
-import {Referral, IReferral} from "./Referral.sol";
-
-interface IOracle {
-    function getRate(
-        IERC20 srcToken,
-        IERC20 dstToken,
-        bool useWrappers
-    ) external view returns (uint256 weightedRate);
-}
+import {Referral} from "./Referral.sol";
+import {IOracle} from "./interface/IOracle.sol";
+import {IReferral} from "./interface/IReferral.sol";
 
 contract MokeToken is ERC20 {
-    constructor() ERC20("Blue BCT", "BBCT") {
+    constructor(string memory _name, string memory _symbol)
+        ERC20(_name, _symbol)
+    {
         _mint(_msgSender(), 2500000000 * 1e18);
     }
 }
@@ -81,13 +77,13 @@ contract Pool is Ownable, ReentrancyGuard {
     ) Ownable() ReentrancyGuard() {
         token = IERC20(_token);
         poolName = _poolName;
-        poolTokenPrice = _poolTokenPrice; //_poolTokenPrice;
+        poolTokenPrice = _poolTokenPrice;
         releaseSteps = _releaseSteps;
         totalRewardPercentage = _mROI * _releaseSteps;
         tokenPayer = _tokenPayer;
         referralManager = IReferral(_referralManager);
         poolStartTime = block.timestamp;
-        poolLockedTime = _releaseSteps * 5 seconds;
+        poolLockedTime = _releaseSteps * 30 days;
         status = true;
         transferOwnership(_owner);
     }

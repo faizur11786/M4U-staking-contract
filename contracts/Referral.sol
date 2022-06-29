@@ -5,15 +5,7 @@ pragma solidity ^0.8.4;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IPoolFactory} from "./PoolFactory.sol";
-
-interface IReferral {
-    function addReferral(
-        address,
-        address,
-        uint256
-    ) external returns (bool);
-}
+import {IPoolFactory} from "./interface/IPoolFactory.sol";
 
 contract Referral is Ownable, ReentrancyGuard {
     uint8 private constant MAX_LEVEL = 3;
