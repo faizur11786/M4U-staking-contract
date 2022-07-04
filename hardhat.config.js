@@ -29,7 +29,12 @@ module.exports = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
-    hardhat: {},
+    hardhat: {
+      forking: {
+        url: "https://polygon-rpc.com/",
+      },
+      chainId: 1337,
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
