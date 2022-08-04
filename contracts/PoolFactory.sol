@@ -11,10 +11,9 @@ contract PoolFactory is Ownable {
     address[] private pools;
     IERC20 public token;
     address public tokenPayer;
-
     address public referralManager;
 
-    event PoolCreated(address pool, uint8 mROI, uint8 releaseSteps);
+    event PoolCreated(address pool, uint256 mROI, uint256 releaseSteps);
     event PoolRemoved(address pool);
 
     constructor(
@@ -45,22 +44,22 @@ contract PoolFactory is Ownable {
 
     function createPool(
         string memory _poolName,
-        uint256 _poolTokenPrice,
-        uint8 _mROI,
-        uint8 _releaseSteps
+        uint256 _mROI,
+        uint256 _releaseStepsInDays,
+        bool _isUnStakeable
     ) external onlyOwner returns (bool) {
         Pool newPool = new Pool(
             _poolName,
-            _poolTokenPrice,
             _mROI,
-            _releaseSteps,
+            _releaseStepsInDays,
             token,
             tokenPayer,
             referralManager,
-            owner()
+            owner(),
+            _isUnStakeable
         );
         pools.push(address(newPool));
-        emit PoolCreated(address(newPool), _mROI, _releaseSteps);
+        emit PoolCreated(address(newPool), _mROI, _releaseStepsInDays);
         return true;
     }
 
