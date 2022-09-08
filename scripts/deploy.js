@@ -8,24 +8,33 @@ const hre = require("hardhat");
 async function main() {
   const accounts = await hre.ethers.getSigners();
 
-  console.log("Deploying contracts with the account:", accounts[0].address);
+  let token, tokenPayer;
 
-  const MokeToken = await hre.ethers.getContractFactory("MokeToken");
-  const mokeToken = await MokeToken.deploy("Moke Token", "MOKE");
-  //   await mokeToken.deployed();
+  if (hre.network.name === "hardhat") {
+    console.log("Deploying hardhat MockToken...");
+    const MokeToken = await hre.ethers.getContractFactory("MokeToken");
+    const token = await MokeToken.deploy("Moke Token", "MOKE");
+    await token.deployed();
+    token = token.address;
+    tokenPayer = accounts[0].address;
+  } else {
+    tokenPayer = process.env.TOKENPAYER;
+    token = process.env.TOKEN;
+  }
 
-  console.log("MokeToken Address: ", mokeToken.address);
+  console.log("TOKENPAYER:", tokenPayer);
+  console.log("TOKEN", token);
+
   const DropBonus = await hre.ethers.getContractFactory("DropBonus");
-  const dropDonus = await DropBonus.deploy(
-    accounts[0].address,
-    mokeToken.address
-  );
-  //   await dropDonus.deployed();
+  const dropDonus = await DropBonus.deploy(tokenPayer, token);
+  await dropDonus.deployed();
 
-  return {
-    mokeToken,
-    dropDonus,
-  };
+  console.log("DropBonus deployed to:", dropDonus.address);
+
+  //   return {
+  //     mokeToken: token,
+  //     dropDonus,
+  //   };
 }
 
 // We recommend this pattern to be able to use async/await everywhere

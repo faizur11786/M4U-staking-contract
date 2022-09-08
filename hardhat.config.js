@@ -30,6 +30,12 @@ module.exports = {
       },
       chainId: 1337,
     },
+    bsc: {
+      url: "https://bsc-dataseed1.binance.org/",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      chainId: 56,
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
       accounts:
