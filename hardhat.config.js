@@ -24,16 +24,16 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.4",
   networks: {
+    hardhat: {
+      forking: {
+        url: "https://bsc-dataseed1.binance.org/",
+      },
+      chainId: 1337,
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    },
-    hardhat: {
-      forking: {
-        url: "https://polygon-rpc.com/",
-      },
-      chainId: 1337,
     },
   },
   gasReporter: {

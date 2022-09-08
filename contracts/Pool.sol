@@ -24,7 +24,7 @@ contract Pool is Ownable, ReentrancyGuard {
     bool public status;
 
     uint256 public totalStaked;
-    
+
     // structyou for holding staking information
     struct StakingInfo {
         uint256 amount;
@@ -67,8 +67,10 @@ contract Pool is Ownable, ReentrancyGuard {
     ) Ownable() ReentrancyGuard() {
         token = IERC20(_token);
         poolName = _poolName;
-        releaseSteps = _releaseStepsInDays * 1 days / 30 days;
-        totalRewardPercentage = _mROI * _releaseStepsInDays * 1 days / 30 days;
+        releaseSteps = (_releaseStepsInDays * 1 days) / 30 days;
+        totalRewardPercentage =
+            (_mROI * _releaseStepsInDays * 1 days) /
+            30 days;
         tokenPayer = _tokenPayer;
         referralManager = IReferral(_referralManager);
         poolStartTime = block.timestamp;
@@ -102,9 +104,6 @@ contract Pool is Ownable, ReentrancyGuard {
     function setEndTime(uint256 _time) external onlyOwner {
         poolLockedTime = block.timestamp + _time;
     }
-
-   
-
 
     function withdrawFunds(IERC20 _token) external onlyOwner {
         require(_token.balanceOf(address(this)) > 0, "No funds to withdraw");
@@ -158,13 +157,13 @@ contract Pool is Ownable, ReentrancyGuard {
     }
 
     function getTokenPrice() public view returns (uint256) {
-       uint256 rate = IOracle(0xfbD61B037C325b959c0F6A7e69D8f37770C2c550)
-                .getRate(
-                    token,
-                    IERC20(0x55d398326f99059fF775485246999027B3197955),
-                    true
-                );
-            return rate;
+        uint256 rate = IOracle(0xfbD61B037C325b959c0F6A7e69D8f37770C2c550)
+            .getRate(
+                token,
+                IERC20(0x55d398326f99059fF775485246999027B3197955),
+                true
+            );
+        return rate;
     }
 
     ///////////////////////////////////////////

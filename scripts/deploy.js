@@ -8,42 +8,23 @@ const hre = require("hardhat");
 async function main() {
   const accounts = await hre.ethers.getSigners();
 
-  // Dpeloying referal cobntract
-  console.log("\nDeploying Referral");
-  console.log("Procuring artifacts");
-  const Referral = await hre.ethers.getContractFactory("Referral");
-  console.log("Sending transaction");
-  const referral = await Referral.deploy(
-    [5, 3, 2],
-    "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-    accounts[0].address
-  );
-  console.log("Transaction sent");
-  console.log("Waiting for deployment");
-  await referral.deployed();
-  console.log("Waiting for block confirmation");
-  await referral.deployTransaction.wait();
-  console.log("Transaction confirmed");
+  console.log("Deploying contracts with the account:", accounts[0].address);
 
-  // Deploying pool factory
-  console.log("\nDeploying Referral");
-  console.log("Procuring artifacts");
-  const PoolFactory = await hre.ethers.getContractFactory("PoolFactory");
-  console.log("Sending transaction");
-  const poolFactory = await PoolFactory.deploy(
-    "0xaE204EE82E60829A5850FE291C10bF657AF1CF02",
+  const MokeToken = await hre.ethers.getContractFactory("MokeToken");
+  const mokeToken = await MokeToken.deploy("Moke Token", "MOKE");
+  //   await mokeToken.deployed();
+
+  console.log("MokeToken Address: ", mokeToken.address);
+  const DropBonus = await hre.ethers.getContractFactory("DropBonus");
+  const dropDonus = await DropBonus.deploy(
     accounts[0].address,
-    referral.address
+    mokeToken.address
   );
-  console.log("Transaction sent");
-  console.log("Waiting for deployment");
-  await poolFactory.deployed();
-  console.log("Waiting for block confirmation");
-  await poolFactory.deployTransaction.wait();
-  console.log("Transaction confirmed");
+  //   await dropDonus.deployed();
+
   return {
-    referral: referral.address,
-    poolFactory: poolFactory.address,
+    mokeToken,
+    dropDonus,
   };
 }
 
