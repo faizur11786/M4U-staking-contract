@@ -31,6 +31,16 @@ async function main() {
 
   console.log("DropBonus deployed to:", dropDonus.address);
 
+  console.log("Approving DropBonus to spend 1000 Token");
+
+  const tx = await token.approve(
+    dropDonus.address,
+    ethers.utils.parseEther("10000")
+  );
+  await tx.wait();
+
+  console.log("Done.");
+
   return {
     mokeToken: token,
     dropDonus,

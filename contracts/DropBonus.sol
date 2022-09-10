@@ -2,16 +2,7 @@
 
 pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
-contract MokeToken is ERC20 {
-    constructor(string memory _name, string memory _symbol)
-        ERC20(_name, _symbol)
-    {
-        _mint(_msgSender(), 2500000000 * 1e18);
-    }
-}
 
 contract DropBonus is Ownable {
     address public tokenPayer;
@@ -20,23 +11,14 @@ contract DropBonus is Ownable {
 
     address[] private bonusReceivers;
 
-    mapping(address => uint256) private bonusAmountOf;
+    mapping(address => uint256) public bonusAmountOf;
 
-    constructor(address _tokenPayer, IERC20 _tokne) Ownable() {
+    constructor(address _tokenPayer, IERC20 _token) Ownable() {
         tokenPayer = _tokenPayer;
-        token = _tokne;
+        token = _token;
     }
 
-    function _addBonusReceiver(address _receiver) internal {
-        bonusReceivers.push(_receiver);
-    }
-
-    function getBonusReceivers()
-        public
-        view
-        onlyOwner
-        returns (address[] memory)
-    {
+    function getBonusReceivers() public view returns (address[] memory) {
         return bonusReceivers;
     }
 
@@ -48,13 +30,23 @@ contract DropBonus is Ownable {
         token = _token;
     }
 
-    function sandBonus(address _receiver, uint256 _amount)
+    function reSetBonusAmountOf(address _address)
+        public
+        onlyOwner
+        returns (bool)
+    {
+        totalDropBonus -= bonusAmountOf[_address];
+        bonusAmountOf[_address] = 0;
+        return true;
+    }
+
+    function sendBonus(address _receiver, uint256 _amount)
         external
         onlyOwner
         returns (bool)
     {
         require(bonusAmountOf[_receiver] == 0, "Already received bonus");
-        _addBonusReceiver(_receiver);
+        bonusReceivers.push(_receiver);
         token.transferFrom(tokenPayer, _receiver, _amount);
         totalDropBonus += _amount;
         bonusAmountOf[_receiver] = _amount;
@@ -69,5 +61,9 @@ contract DropBonus is Ownable {
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
         payable(_msgSender()).transfer(balance);
+    }
+
+    function destructContract(address _address) external onlyOwner {
+        selfdestruct(payable(_address));
     }
 }
