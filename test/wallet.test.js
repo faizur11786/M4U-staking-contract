@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { deploy } = require("../scripts/deploy");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { ethers } = require("hardhat");
+const { BigNumber } = require("ethers");
 
 describe("Running Test...", async () => {
   async function deployOneYearLockFixture() {
@@ -163,6 +164,7 @@ describe("Running Test...", async () => {
     const { wallet, tokenA, tokenB, tokenPayer } = await loadFixture(
       deployOneYearLockFixture
     );
+    const tokenA_balance = await tokenA.balanceOf(tokenPayer.address);
     const amount = (1 * 1e18).toString();
     const apTxA = await tokenA.approve(wallet.address, amount);
     await apTxA.wait();
@@ -180,5 +182,9 @@ describe("Running Test...", async () => {
         });
       }
     });
+
+    expect(Number(tokenA_balance) / 1e18).greaterThan(
+      Number(await tokenA.balanceOf(tokenPayer.address)) / 1e18
+    );
   });
 });
