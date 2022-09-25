@@ -1,11 +1,19 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
+const { mkdirSync } = require("fs");
+const { createAbiJSON } = require("../utils");
+
+async function deploy(name, ...params) {
+  mkdirSync("abi", { recursive: true });
+  const Contract = await hre.ethers.getContractFactory(name);
+  return await Contract.deploy(...params).then((con) => {
+    createAbiJSON(con, name);
+    return con.deployed();
+  });
+}
 
 async function main() {
+  mkdirSync("abi", { recursive: true });
+
   const accounts = await hre.ethers.getSigners();
 
   let tokenAddress, token, tokenPayer;
@@ -56,5 +64,6 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 }
-
-exports.deploy = main;
+module.exports = {
+  deploy,
+};
