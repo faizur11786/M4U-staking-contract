@@ -159,7 +159,7 @@ describe("Running Test...", async () => {
     );
   });
 
-  it("Should Deposit 100 token to wallet", async () => {
+  it("Should Deposit 1 token into wallet", async () => {
     const { wallet, tokenA, tokenB, tokenPayer } = await loadFixture(
       deployOneYearLockFixture
     );
